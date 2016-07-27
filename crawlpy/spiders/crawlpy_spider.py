@@ -102,28 +102,29 @@ class CrawlpySpider(InitSpider):
             logging.error('Specified config file does not exist')
             logging.error('Not found in: "' + config_file + '"')
             self.abort = True
+        # All good, read config
+        else:
+            # Read json configuration file into python dict
+            fpointer = open(config_file)
+            data = fpointer.read()
+            fpointer.close()
+            self.config = json.loads(data)
 
-        # Read json configuration file into python dict
-        fpointer = open(config_file)
-        data = fpointer.read()
-        fpointer.close()
-        self.config = json.loads(data)
+            # Set scrapy globals
+            self.allowed_domains = [self.config.get('domain')]
+            self.start_urls = [self.config.get('proto') + '://' + self.config.get('domain') + '/']
 
-        # Set scrapy globals
-        self.allowed_domains = [self.config.get('domain')]
-        self.start_urls = [self.config.get('proto') + '://' + self.config.get('domain') + '/']
+            # Set misc globals
+            self.depth = self.config.get('depth')
+            self.base_url = self.config.get('proto') + '://' + self.config.get('domain')
+            self.login_required = self.config.get('login').get('enabled')
 
-        # Set misc globals
-        self.depth = self.config.get('depth')
-        self.base_url = self.config.get('proto') + '://' + self.config.get('domain')
-        self.login_required = self.config.get('login').get('enabled')
-
-        if self.login_required:
-            self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + \
-                              self.config.get('login').get('action')
-            self.login_method = str(self.config.get('login').get('method'))
-            self.login_failure = str(self.config.get('login').get('failure'))
-            self.login_data = self.config.get('login').get('fields')
+            if self.login_required:
+                self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + \
+                                  self.config.get('login').get('action')
+                self.login_method = str(self.config.get('login').get('method'))
+                self.login_failure = str(self.config.get('login').get('failure'))
+                self.login_data = self.config.get('login').get('fields')
 
 
         # Call parent init
@@ -264,3 +265,4 @@ class CrawlpySpider(InitSpider):
         else:
             # NOT HTTP 200
             pass
+
