@@ -5,40 +5,30 @@ Based on:
 https://stackoverflow.com/questions/5851213/crawling-with-an-authenticated-session-in-scrapy
 http://thuongnh.com/building-a-web-crawler-with-scrapy/
 """
-import os
-import sys
-import re
-import logging
-import json
-import scrapy
+import os       # file path checks
+import re       # regex
+import logging  # logger
+import json     # json extract
+#import scrapy   # scrapy framework
+
 from scrapy.http                import Request, FormRequest
-from scrapy.linkextractors.sgml import SgmlLinkExtractor
-from scrapy.selector 		import HtmlXPathSelector
+from scrapy.linkextractors      import LinkExtractor
+from scrapy.selector            import Selector
 from scrapy.spiders             import Rule
 from scrapy.spiders.init        import InitSpider
 
 
-
-
-################################################################################
-# Data Model Class
-################################################################################
-class CrawlpyItem(scrapy.Item): # pylint: disable=too-many-ancestors
-    """
-    Data Model Class
-    """
-    # define the fields for your item here like:
-    url = scrapy.Field()
-    depth = scrapy.Field()
+from crawlpy.items import CrawlpyItem
 
 
 ################################################################################
 # Spider Class
 ################################################################################
-class Crawlpy(InitSpider):
+class CrawlpySpider(InitSpider):
     """
     Crawlpy Class
     """
+    # pylint: disable=too-many-instance-attributes
 
     ########################################
     # Scrapy Variables
@@ -47,7 +37,7 @@ class Crawlpy(InitSpider):
 
     rules = (
         Rule(
-            SgmlLinkExtractor(
+            LinkExtractor(
                 allow=("", ),
                 deny=('logout'),
             ),
@@ -64,8 +54,8 @@ class Crawlpy(InitSpider):
     config = {}
 
     # scrapy required vars
-    allowed_domains = [ ]
-    start_urls = [ ]
+    allowed_domains = []
+    start_urls = []
 
 
     # Crawling depth
@@ -78,7 +68,7 @@ class Crawlpy(InitSpider):
     login_data = {}     # Post data
     login_failure = ''  # Error string on unsuccessful login
 
-    base_url = ''       # (http|https):://domain.tld
+    base_url = ''       # (http|https)://domain.tld
 
 
     ########################################
@@ -114,29 +104,30 @@ class Crawlpy(InitSpider):
             self.abort = True
 
         # Read json configuration file into python dict
-        fp = open(config_file)
-        data = fp.read()
-        fp.close()
+        fpointer = open(config_file)
+        data = fpointer.read()
+        fpointer.close()
         self.config = json.loads(data)
 
         # Set scrapy globals
         self.allowed_domains = [self.config.get('domain')]
-        self.start_urls = [ self.config.get('proto') + '://' + self.config.get('domain') + '/' ]
+        self.start_urls = [self.config.get('proto') + '://' + self.config.get('domain') + '/']
 
         # Set misc globals
         self.depth = self.config.get('depth')
         self.base_url = self.config.get('proto') + '://' + self.config.get('domain')
         self.login_required = self.config.get('login').get('enabled')
 
-        if (self.login_required):
-            self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + self.config.get('login').get('action')
+        if self.login_required:
+            self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + \
+                              self.config.get('login').get('action')
             self.login_method = str(self.config.get('login').get('method'))
             self.login_failure = str(self.config.get('login').get('failure'))
             self.login_data = self.config.get('login').get('fields')
 
 
         # Call parent init
-        super(Crawlpy, self).__init__(*a, **kw)
+        super(CrawlpySpider, self).__init__(*a, **kw)
 
 
 
@@ -202,8 +193,8 @@ class Crawlpy(InitSpider):
 
         # Only crawl the current page if we hit a HTTP-200
         if response.status == 200:
-            hxs = HtmlXPathSelector(response)
-            links = hxs.select("//a/@href").extract()
+            hxs = Selector(response)
+            links = hxs.xpath("//a/@href").extract()
 
             # We stored already crawled links in this list
             crawled_links = []
@@ -213,13 +204,15 @@ class Crawlpy(InitSpider):
 
             for link in links:
 
+                # Link could be a relative url from response.url
+                # such as link: '../test', respo.url: http://dom.tld/foo/bar
+                if link.find('../') == 0:
+                    link = response.url + '/' + link
                 # Prepend BASE URL if it does not have it
-                if 'http://' not in link and 'https://' not in link:
+                elif 'http://' not in link and 'https://' not in link:
                     link = self.base_url + link
 
-                #print link
 
-                #print 'PATU:   link:' + link
                 # If it is a proper link and is not checked yet, yield it to the Spider
                 if (link
                         and linkPattern.match(link)

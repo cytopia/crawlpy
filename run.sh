@@ -13,5 +13,8 @@ echo
 echo "Save results to csv:"
 echo "$ scrapy crawl crawlpy --loglevel=WARNING -a config=~/repo/crawlpy/crawlpy.config.json -o urls.csv -t csv"
 
+echo
+echo "Clear cache for re-coding:"
+echo "$ find . -name \*.pyc -exec rm '{}' \;"
 
 exit 0

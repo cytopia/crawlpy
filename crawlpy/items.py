@@ -5,10 +5,16 @@
 # See documentation in:
 # http://doc.scrapy.org/en/latest/topics/items.html
 
-import scrapy
+"""
+Need Field and Item
+"""
+#import scrapy
+from scrapy.item import Item, Field
 
-
-class CrawlpyItem(scrapy.Item):
+class CrawlpyItem(Item): # pylint: disable=too-many-ancestors
+    """
+    Data Model Class
+    """
     # define the fields for your item here like:
-    url = scrapy.Field()
-    depth = scrapy.Field()
+    url = Field()
+    depth = Field()
