@@ -1,0 +1,15 @@
+{
+	"proto": "http",
+	"domain": "localhost",
+	"depth": 3,
+	"login": {
+		"enabled": true,
+		"method": "post",
+		"action": "/login.php",
+		"failure": "Password is incorrect",
+		"fields": {
+			"username": "john",
+			"password": "doe"
+		}
+	}
+}
