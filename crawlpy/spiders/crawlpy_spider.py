@@ -195,8 +195,8 @@ class CrawlpySpider(InitSpider):
         if self.login_required:
             curr_depth = curr_depth - 1 # Do not count the login page as nesting depth
 
-        # Yield current url
-        item = CrawlpyItem()  # could also just be `item = dict()`
+        # Yield current url item
+        item = CrawlpyItem()
         item['url'] = response.url
         item['depth'] = curr_depth
         item['referrer'] = response.meta.get('referrer', '')
