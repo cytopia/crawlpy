@@ -17,7 +17,6 @@ from scrapy.selector            import Selector
 from scrapy.spiders             import Rule
 from scrapy.spiders.init        import InitSpider
 
-
 from crawlpy.items import CrawlpyItem
 
 
@@ -35,16 +34,6 @@ class CrawlpySpider(InitSpider):
     ########################################
     name = "crawlpy"
 
-    rules = (
-        Rule(
-            LinkExtractor(
-                allow=("", ),
-                deny=('logout'),
-            ),
-            callback='parse',
-            follow=True
-        ),
-    )
 
     ########################################
     # Variables to be initialized by config
@@ -53,13 +42,23 @@ class CrawlpySpider(InitSpider):
     # Main JSON Configuration dict
     config = {}
 
+
+    # Link extraction rules
+    rules = ()
+
+
     # scrapy required vars
     allowed_domains = []
     start_urls = []
 
 
-    # Crawling depth
-    depth = 0
+
+    ########################################
+    # Non scrapy variables
+    ########################################
+
+    depth = 0           # Limit depth (0: no limit)
+    base_url = ''       # (http|https)://domain.tld
 
     # Login data
     login_required = False
@@ -68,18 +67,10 @@ class CrawlpySpider(InitSpider):
     login_data = {}     # Post data
     login_failure = ''  # Error string on unsuccessful login
 
-    base_url = ''       # (http|https)://domain.tld
-
-
-    ########################################
-    # Non scrapy variables
-    ########################################
 
     # Abort flag
     abort = False
 
-    # Keep track about non-unique links
-    uniques = []
 
 
     ########################################
@@ -88,8 +79,12 @@ class CrawlpySpider(InitSpider):
 
     #----------------------------------------------------------------------
     def __init__(self, *a, **kw):
-        """Overwrite __init__ function"""
+        """Constructor: overwrite parent __init__ function"""
 
+        # Call parent init
+        super(CrawlpySpider, self).__init__(*a, **kw)
+
+        # Get command line arg provided configuration param
         config_file = kw.get('config')
 
         # Validate configuration file parameter
@@ -97,27 +92,43 @@ class CrawlpySpider(InitSpider):
             logging.error('Missing argument "-a config"')
             logging.error('Usage: scrapy crawl crawlpy -a config=/path/to/config.json')
             self.abort = True
+
         # Check if it is actually a file
         elif not os.path.isfile(config_file):
             logging.error('Specified config file does not exist')
             logging.error('Not found in: "' + config_file + '"')
             self.abort = True
+
         # All good, read config
         else:
-            # Read json configuration file into python dict
+            # Load json config
             fpointer = open(config_file)
             data = fpointer.read()
             fpointer.close()
+
+            # Store config in dict
             self.config = json.loads(data)
 
             # Set scrapy globals
             self.allowed_domains = [self.config.get('domain')]
             self.start_urls = [self.config.get('proto') + '://' + self.config.get('domain') + '/']
+            self.rules = (
+                Rule(
+                    LinkExtractor(
+                        allow_domains=(self.allowed_domains),
+                        unique=True,
+                        deny=('logout'),
+                    ),
+                    callback='parse',
+                    follow=True
+                ),
+            )
 
             # Set misc globals
             self.depth = self.config.get('depth')
             self.base_url = self.config.get('proto') + '://' + self.config.get('domain')
             self.login_required = self.config.get('login').get('enabled')
+
 
             if self.login_required:
                 self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + \
@@ -125,12 +136,6 @@ class CrawlpySpider(InitSpider):
                 self.login_method = str(self.config.get('login').get('method'))
                 self.login_failure = str(self.config.get('login').get('failure'))
                 self.login_data = self.config.get('login').get('fields')
-
-
-        # Call parent init
-        super(CrawlpySpider, self).__init__(*a, **kw)
-
-
 
 
 
@@ -186,83 +191,21 @@ class CrawlpySpider(InitSpider):
         """
 
         # Get current nesting level
-        if response.meta.has_key('depth'):
-            curr_depth = response.meta['depth']
-        else:
-            curr_depth = 1
+        curr_depth = response.meta.get('depth', 1)
+        if self.login_required:
+            curr_depth = curr_depth - 1 # Do not count the login page as nesting depth
 
+        # Yield current url
+        item = CrawlpyItem()  # could also just be `item = dict()`
+        item['url'] = response.url
+        item['depth'] = curr_depth
+        item['referrer'] = response.meta.get('referrer', '')
+        yield item
 
-        # Only crawl the current page if we hit a HTTP-200
-        if response.status == 200:
-            hxs = Selector(response)
-            links = hxs.xpath("//a/@href").extract()
-
-            # We stored already crawled links in this list
-            crawled_links = []
-
-            # Pattern to check proper link
-            linkPattern  = re.compile("^(?:http|https):\/\/(?:[\w\.\-\+]+:{0,1}[\w\.\-\+]*@)?(?:[a-z0-9\-\.]+)(?::[0-9]+)?(?:\/|\/(?:[\w#!:\.\?\+=&amp;%@!\-\/\(\)]+)|\?(?:[\w#!:\.\?\+=&amp;%@!\-\/\(\)]+))?$")
-
+        # Dive deeper?
+        if curr_depth < self.depth or self.depth == 0:
+            links = LinkExtractor().extract_links(response)
             for link in links:
+                yield Request(link.url, meta={'depth': curr_depth+1, 'referrer': response.url})
 
-                # Link could be a relative url from response.url
-                # such as link: '../test', respo.url: http://dom.tld/foo/bar
-                if link.find('../') == 0:
-                    link = response.url + '/' + link
-                # Prepend BASE URL if it does not have it
-                elif 'http://' not in link and 'https://' not in link:
-                    link = self.base_url + link
-
-
-                # If it is a proper link and is not checked yet, yield it to the Spider
-                if (link
-                        and linkPattern.match(link)
-                        and link.find(self.base_url) == 0):
-                        #and link not in crawled_links
-                        #and link not in uniques):
-
-                    # Check if this url already exists
-                    re_exists = re.compile('^' + link + '$')
-                    exists = False
-                    for i in self.uniques:
-                        if re_exists.match(i):
-                            exists = True
-                            break
-
-                    if not exists:
-                        # Store the shit
-                        crawled_links.append(link)
-                        self.uniques.append(link)
-
-                        # Do we recurse?
-                        if curr_depth < self.depth:
-                            request = Request(link, self.parse)
-                            # Add meta-data about the current recursion depth
-                            request.meta['depth'] = curr_depth + 1
-                            yield request
-                        else:
-                            # Nesting level too deep
-                            pass
-                else:
-                    # Link not in condition
-                    pass
-
-
-            #
-            # Final return (yield) to user
-            #
-            for url in crawled_links:
-                #print "FINAL FINAL FINAL URL: " + response.url
-                item = CrawlpyItem()
-                item['url'] = url
-                item['depth'] = curr_depth
-
-                yield item
-            #print "FINAL FINAL FINAL URL: " + response.url
-            #item = CrawlpyItem()
-            #item['url'] = response.url
-            #yield item
-        else:
-            # NOT HTTP 200
-            pass
 
