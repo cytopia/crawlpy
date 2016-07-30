@@ -19,16 +19,15 @@ pip install Scrapy
 
 ## Usage
 
-```shell
-
+```bash
 # stdout output
 scrapy crawl crawlpy -a config=/path/to/crawlpy.config.json
 
 # save as json (url:, referer:, depth:) to 'urls.json'
-scrapy crawl crawlpy -a config=/path/to/crawlpy.config.json -o urls.json -t json
+scrapy crawl crawlpy --loglevel=INFO -a config=/path/to/crawlpy.config.json -o urls.json -t json
 
 # save as csv (url, referer, depth) to 'urls.csv'
-scrapy crawl crawlpy -a config=/path/to/crawlpy.config.json -o urls.csv -t csv
+scrapy crawl crawlpy --loglevel=INFO -a config=/path/to/crawlpy.config.json -o urls.csv -t csv
 ```
 
 ## Configuration

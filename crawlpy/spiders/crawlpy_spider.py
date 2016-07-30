@@ -156,6 +156,8 @@ class CrawlpySpider(InitSpider):
         if self.abort:
             return
 
+        logging.info('All set, start crawling with depth: ' + str(self.config['depth']))
+
         # Do a login
         if self.config['login']['enabled']:
             # Start with login first
@@ -202,7 +204,6 @@ class CrawlpySpider(InitSpider):
         # Get current nesting level
         curr_depth = response.meta.get('depth', 1)
         if self.config['login']['enabled']:
-            logging.info('curr_depth = curr_depth - 1')
             curr_depth = curr_depth - 1 # Do not count the login page as nesting depth
 
         # Yield current url item
