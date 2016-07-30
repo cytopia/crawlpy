@@ -235,9 +235,8 @@ class CrawlpySpider(InitSpider):
         if self.config['store']['enabled']:
             path = response.url.replace(os.sep, '--')   # Replace directory separator
             path = self.config['store']['path'] + os.sep + path
-            with open(path, "wb") as fpointer:
+            with open(path, 'wb') as fpointer:
                 fpointer.write(response.body)
-                fpointer.close()
 
         # Yield current url item
         item = CrawlpyItem()
