@@ -199,13 +199,13 @@ class CrawlpySpider(InitSpider):
         item = CrawlpyItem()
         item['url'] = response.url
         item['depth'] = curr_depth
-        item['referrer'] = response.meta.get('referrer', '')
+        item['referer'] = response.meta.get('referer', '')
         yield item
 
         # Dive deeper?
         if curr_depth < self.depth or self.depth == 0:
             links = LinkExtractor().extract_links(response)
             for link in links:
-                yield Request(link.url, meta={'depth': curr_depth+1, 'referrer': response.url})
+                yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})
 
 

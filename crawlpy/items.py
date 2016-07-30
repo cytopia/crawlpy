@@ -19,4 +19,4 @@ class CrawlpyItem(Item): # pylint: disable=too-many-ancestors
     url = Field()
     text = Field()
     depth = Field()
-    referrer = Field()
+    referer = Field()
