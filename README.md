@@ -86,12 +86,16 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
 |failure|string|`Password is incorrect`|login failed string|A string that is found on the login page, when the login fails.|
 |fields|key-value|`{`<br/>    `"username": "john",`<br/>    `"password": "doe"`<br>`}`|`post` or `get` params|POST or GET params required to login.<br/><br/>**Examples:** username, password, hidden-field-name|
 |**csrf**||||Login CSRF section|
-|enabled|boolean|`false`|`true` or `false`|`true`: Login page has a dynamic CSRF token that you want to read out and submit along the normal submit data.<br/>`false`: Login does not require a CSRF token to be submitted.<br/><br/>**Note:** If the login has a static (never-changing) CSRF field, just add the data into the fields section|
+|enabled|boolean|`false`|`true` or `false`|`true`: Login page has a dynamic CSRF token that you want to read out and submit along the normal submit data.<br/>`false`: Login does not require a CSRF token to be submitted.<br/><br/>**Note:** If the login has a static (never-changing) CSRF field, just add the data into the fields section<br/>**Note:** Read below about built-in automatic CSRF detection and leave this off at first.|
 |field|string|`csrf`|Field name|The name of the input field which holds the CSRF token|
 |**store**||||Store section|
 |enabled|boolean|`false`|`true` or `false`|`true`: Save webpages to disk<br/>`false`: Do not save webpages to disk.|
 |path|string|`./data`|Path|Absolute or relative path to store webpages to disk|
 
+
+### Note about CSRF
+
+Scrapy will most likely handle this automatically, so its best to turn off custom `csrf` in the config. If there is however any situation where the built-in CSRF recognition does not work, try the user-defined one. If none of them work, drop me an issue.
 
 
 ## Reference
