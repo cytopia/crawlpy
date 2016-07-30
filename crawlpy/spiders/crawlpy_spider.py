@@ -1,23 +1,21 @@
 # -*- coding: utf-8 -*-
 
-"""Module Doc
-Based on:
-https://stackoverflow.com/questions/5851213/crawling-with-an-authenticated-session-in-scrapy
-http://thuongnh.com/building-a-web-crawler-with-scrapy/
-"""
+"""Module Doc"""
+import sys      # Encoding
 import os       # file path checks
-import re       # regex
 import logging  # logger
 import json     # json extract
-#import scrapy   # scrapy framework
 
 from scrapy.http                import Request, FormRequest
 from scrapy.linkextractors      import LinkExtractor
-from scrapy.selector            import Selector
 from scrapy.spiders             import Rule
 from scrapy.spiders.init        import InitSpider
 
 from crawlpy.items import CrawlpyItem
+
+# Fix UTF-8 problems inside dict()
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 
 ################################################################################
@@ -27,46 +25,52 @@ class CrawlpySpider(InitSpider):
     """
     Crawlpy Class
     """
-    # pylint: disable=too-many-instance-attributes
 
     ########################################
     # Scrapy Variables
     ########################################
     name = "crawlpy"
 
-
-    ########################################
-    # Variables to be initialized by config
-    ########################################
-
-    # Main JSON Configuration dict
-    config = {}
-
-
     # Link extraction rules
+    # To be initialized
     rules = ()
 
 
-    # scrapy required vars
+    # scrapy domain/url vars
+    # To be initialized
     allowed_domains = []
     start_urls = []
 
 
+    ########################################
+    # Configuration
+    ########################################
+
+    # Main JSON Configuration dict
+    config = None
+    config_defaults = dict({
+        'proto': 'http',
+        'domain': 'localhost',
+        'depth': 3,
+        'login': {
+            'enabled': False,
+            'method': 'post',
+            'action': '/login.php',
+            'failure': 'Password is incorrect',
+            'fields': {
+                'username': 'john',
+                'password': 'doe'
+            }
+        }
+    })
+
 
     ########################################
-    # Non scrapy variables
+    # Helper variables
     ########################################
 
-    depth = 0           # Limit depth (0: no limit)
     base_url = ''       # (http|https)://domain.tld
-
-    # Login data
-    login_required = False
-    login_page = ''
-    login_method = ''   # 'post' or 'get'
-    login_data = {}     # Post data
-    login_failure = ''  # Error string on unsuccessful login
-
+    login_url = ''      # (http|https)://domain.tld/path/to/login
 
     # Abort flag
     abort = False
@@ -106,12 +110,24 @@ class CrawlpySpider(InitSpider):
             data = fpointer.read()
             fpointer.close()
 
-            # Store config in dict
-            self.config = json.loads(data)
+            # convert JSON to dict
+            config = json.loads(data)
+
+            # fill in default values for missing values
+            self.config = dict()
+            self.config['proto'] = str(config.get('proto', self.config_defaults['proto']))
+            self.config['domain'] = str(config.get('domain', self.config_defaults['domain']))
+            self.config['depth'] = int(config.get('depth', self.config_defaults['depth']))
+            self.config['login'] = dict()
+            self.config['login']['enabled'] = bool(config.get('login', dict()).get('enabled', self.config_defaults['login']['enabled']))
+            self.config['login']['method'] = str(config.get('login', dict()).get('method', self.config_defaults['login']['method']))
+            self.config['login']['action'] = str(config.get('login', dict()).get('action', self.config_defaults['login']['enabled']))
+            self.config['login']['failure'] = str(config.get('login', dict()).get('failure', self.config_defaults['login']['failure']))
+            self.config['login']['fields'] = config.get('login', dict()).get('fields', self.config_defaults['login']['fields'])
 
             # Set scrapy globals
-            self.allowed_domains = [self.config.get('domain')]
-            self.start_urls = [self.config.get('proto') + '://' + self.config.get('domain') + '/']
+            self.allowed_domains = [self.config['domain']]
+            self.start_urls = [self.config['proto'] + '://' + self.config['domain'] + '/']
             self.rules = (
                 Rule(
                     LinkExtractor(
@@ -125,17 +141,9 @@ class CrawlpySpider(InitSpider):
             )
 
             # Set misc globals
-            self.depth = self.config.get('depth')
-            self.base_url = self.config.get('proto') + '://' + self.config.get('domain')
-            self.login_required = self.config.get('login').get('enabled')
-
-
-            if self.login_required:
-                self.login_page = self.config.get('proto') + '://' + self.config.get('domain') + \
-                                  self.config.get('login').get('action')
-                self.login_method = str(self.config.get('login').get('method'))
-                self.login_failure = str(self.config.get('login').get('failure'))
-                self.login_data = self.config.get('login').get('fields')
+            self.base_url = self.config['proto'] + '://' + self.config['domain']
+            self.login_url = self.config['proto'] + '://' + self.config['domain'] + \
+                                  self.config['login']['action']
 
 
 
@@ -149,11 +157,13 @@ class CrawlpySpider(InitSpider):
             return
 
         # Do a login
-        if self.login_required:
+        if self.config['login']['enabled']:
             # Start with login first
-            return Request(url=self.login_page, callback=self.login)
+            logging.info('Login required')
+            return Request(url=self.login_url, callback=self.login)
         else:
             # Start with pase function
+            logging.info('Not ogin required')
             return Request(url=self.base_url, callback=self.parse)
 
 
@@ -161,11 +171,10 @@ class CrawlpySpider(InitSpider):
     def login(self, response):
         """Generate a login request."""
 
-        self.log('Login called')
         return FormRequest.from_response(
             response,
-            formdata=self.login_data,
-            method=self.login_method,
+            formdata=self.config['login']['fields'],
+            method=self.config['login']['method'],
             callback=self.check_login_response
         )
 
@@ -175,9 +184,9 @@ class CrawlpySpider(InitSpider):
         """Check the response returned by a login request to see if we are
         successfully logged in.
         """
-        if self.login_failure not in response.body:
+        if self.config['login']['failure'] not in response.body:
             # Now the crawling can begin..
-            self.log('Login successful')
+            logging.info('Login successful')
             return self.initialized()
         else:
             # Something went wrong, we couldn't log in, so nothing happens.
@@ -192,7 +201,8 @@ class CrawlpySpider(InitSpider):
 
         # Get current nesting level
         curr_depth = response.meta.get('depth', 1)
-        if self.login_required:
+        if self.config['login']['enabled']:
+            logging.info('curr_depth = curr_depth - 1')
             curr_depth = curr_depth - 1 # Do not count the login page as nesting depth
 
         # Yield current url item
@@ -203,9 +213,7 @@ class CrawlpySpider(InitSpider):
         yield item
 
         # Dive deeper?
-        if curr_depth < self.depth or self.depth == 0:
+        if curr_depth < self.config['depth'] or self.config['depth'] == 0:
             links = LinkExtractor().extract_links(response)
             for link in links:
                 yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})
-
-
