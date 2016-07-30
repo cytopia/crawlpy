@@ -60,6 +60,10 @@ class CrawlpySpider(InitSpider):
             'fields': {
                 'username': 'john',
                 'password': 'doe'
+            },
+            'csrf': {
+                'enabled': False,
+                'field': 'csrf'
             }
         },
         'store': {
@@ -128,9 +132,14 @@ class CrawlpySpider(InitSpider):
             self.config['login']['action'] = str(config.get('login', dict()).get('action', self.config_defaults['login']['enabled']))
             self.config['login']['failure'] = str(config.get('login', dict()).get('failure', self.config_defaults['login']['failure']))
             self.config['login']['fields'] = config.get('login', dict()).get('fields', self.config_defaults['login']['fields'])
+            self.config['login']['csrf'] = dict()
+            self.config['login']['csrf']['enabled'] = bool(config.get('login', dict()).get('csrf', dict()).get('enabled', self.config_defaults['login']['csrf']['enabled']))
+            self.config['login']['csrf']['field'] = str(config.get('login', dict()).get('csrf', dict()).get('field', self.config_defaults['login']['csrf']['field']))
             self.config['store'] = dict()
             self.config['store']['enabled'] = bool(config.get('store', dict()).get('enabled', self.config_defaults['store']['enabled']))
             self.config['store']['path'] = str(config.get('store', dict()).get('path', self.config_defaults['store']['path']))
+            logging.info('Merged configuration:')
+            logging.info(self.config)
 
             # Set scrapy globals
             self.allowed_domains = [self.config['domain']]
@@ -176,20 +185,28 @@ class CrawlpySpider(InitSpider):
             return Request(url=self.base_url, callback=self.parse)
 
 
+
     #----------------------------------------------------------------------
     def login(self, response):
         """Generate a login request."""
+
+        # Add CSRF data to login
+        if self.config['login']['csrf']['enabled']:
+            field = self.config['login']['csrf']['field']
+            csrf = response.xpath('//input[@name="' + field + '"]/@value')[0].extract()
+            self.config['login']['fields'][field] = csrf
+            logging.info('Adding CSRF data to login. Field: "' + field + '" | value: "' + csrf + "'")
 
         return FormRequest.from_response(
             response,
             formdata=self.config['login']['fields'],
             method=self.config['login']['method'],
-            callback=self.check_login_response
+            callback=self.post_login
         )
 
 
     #----------------------------------------------------------------------
-    def check_login_response(self, response):
+    def post_login(self, response):
         """Check the response returned by a login request to see if we are
         successfully logged in.
         """

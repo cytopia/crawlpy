@@ -17,6 +17,15 @@ Python web spider/crawler based on [scrapy](http://scrapy.org/) with support for
 pip install Scrapy
 ```
 
+
+## Features
+
+* POST/GET Login prior crawling
+* Can handle logins that requires dynamic CSRF token
+* Variable level of crawling depth
+* Optionally save webpages to disk
+
+
 ## Usage
 
 ```bash
@@ -43,13 +52,17 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
     "domain": "localhost",  // Only the domain. e.g.: 'example.com' or 'www.example.com'
     "depth": 3,             // Nesting depth to crawl
     "login": {              // Login section
-        "enabled": false,    // Do we actually need to do a login?
+        "enabled": false,   // Do we actually need to do a login?
         "method": "post",   // 'post' or 'get'
         "action": "/login.php", // Where the post or get will be submitted to
         "failure": "Password is incorrect", // The string you will see on login failure
-        "fields": {         // Fields to submit to 'action', add more if you need
+        "fields": {         // POST/GET Fields to submit to login page
             "username": "john",
             "password": "doe"
+        },
+        "csrf": {
+            "enabled": false, // Login requires a CSRF token?
+            "field": "csrf"   // Input field name that holds dynamic CSRF token
         }
     },
     "store": {              // Store section
@@ -66,19 +79,19 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
 |proto|string|`http`|`http` or `https`|Is the site you want to crawl running on `http` or `https`?|
 |domain|string|`localhost`|Domain or subdomain|The domain or subdomain you want to spider. Nothing outside this domain/subdomain will be touched.|
 |depth|integer|`3`|`0`,`1`,`2`,`3`,...|`0`: Crawl indefinetely until every subpage has been reached.<br/>`1`: Only crawl links on the initial page.<br/>`2`: Crawl links on the initial page and everything found on the links of that page.<br/><br/>**Note:** when you do a login, the login page already counts as one level of depth by scrapy itself, but this is rewritten internally to subtract that depth again, so your output will not show that extra depth.|
-|login||||Login section|
+|**login**||||Login section|
 |enabled|boolean|`false`|`true` or `false`|`true`: Do a login prior crawling<br/>`false`: do not login<br/><br/>**Note:**When login is set to `false`, you do not need to fill in the rest of the variables inside the `login` section|
 |method|string|`post`|`post` or `get`|Method required to execute the login|
 |action|string|`/login.php`|login page|Relative login page (from the base domain, including leading slash) where the `post` or `get` will go to.|
 |failure|string|`Password is incorrect`|login failed string|A string that is found on the login page, when the login fails.|
 |fields|key-value|`{`<br/>    `"username": "john",`<br/>    `"password": "doe"`<br>`}`|`post` or `get` params|POST or GET params required to login.<br/><br/>**Examples:** username, password, hidden-field-name|
-|store||||Store section|
+|**csrf**||||Login CSRF section|
+|enabled|boolean|`false`|`true` or `false`|`true`: Login page has a dynamic CSRF token that you want to read out and submit along the normal submit data.<br/>`false`: Login does not require a CSRF token to be submitted.<br/><br/>**Note:** If the login has a static (never-changing) CSRF field, just add the data into the fields section|
+|field|string|`csrf`|Field name|The name of the input field which holds the CSRF token|
+|**store**||||Store section|
 |enabled|boolean|`false`|`true` or `false`|`true`: Save webpages to disk<br/>`false`: Do not save webpages to disk.|
 |path|string|`./data`|Path|Absolute or relative path to store webpages to disk|
 
-## TODO
-
-* Check for dynamic [CSRF](https://en.wikipedia.org/wiki/Cross-site_request_forgery) token prior log in
 
 
 ## Reference

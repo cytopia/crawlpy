@@ -10,6 +10,15 @@
 		"fields": {
 			"username": "john",
 			"password": "doe"
+		},
+		"csrf": {
+			"enabled": false,
+			"field": "csrf"
 		}
+
+	},
+	"store": {
+		"enabled": false,
+		"path": "./data"
 	}
 }
