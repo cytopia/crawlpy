@@ -61,6 +61,10 @@ class CrawlpySpider(InitSpider):
                 'username': 'john',
                 'password': 'doe'
             }
+        },
+        'store': {
+            'enabled': False,
+            'path': './data'
         }
     })
 
@@ -124,6 +128,9 @@ class CrawlpySpider(InitSpider):
             self.config['login']['action'] = str(config.get('login', dict()).get('action', self.config_defaults['login']['enabled']))
             self.config['login']['failure'] = str(config.get('login', dict()).get('failure', self.config_defaults['login']['failure']))
             self.config['login']['fields'] = config.get('login', dict()).get('fields', self.config_defaults['login']['fields'])
+            self.config['store'] = dict()
+            self.config['store']['enabled'] = bool(config.get('store', dict()).get('enabled', self.config_defaults['store']['enabled']))
+            self.config['store']['path'] = str(config.get('store', dict()).get('path', self.config_defaults['store']['path']))
 
             # Set scrapy globals
             self.allowed_domains = [self.config['domain']]
@@ -205,6 +212,14 @@ class CrawlpySpider(InitSpider):
         curr_depth = response.meta.get('depth', 1)
         if self.config['login']['enabled']:
             curr_depth = curr_depth - 1 # Do not count the login page as nesting depth
+
+        # Store to disk?
+        if self.config['store']['enabled']:
+            path = response.url.replace(os.sep, '--')   # Replace directory separator
+            path = self.config['store']['path'] + os.sep + path
+            with open(path, "wb") as fpointer:
+                fpointer.write(response.body)
+                fpointer.close()
 
         # Yield current url item
         item = CrawlpyItem()

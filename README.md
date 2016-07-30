@@ -2,7 +2,7 @@
 
 ---
 
-Python web spider/crawler based on [scrapy](http://scrapy.org/) with support for POST/GET login and variable level of recursions/depth.
+Python web spider/crawler based on [scrapy](http://scrapy.org/) with support for POST/GET login, variable level of recursions/depth and optionally save to disk.
 
 ---
 
@@ -42,7 +42,7 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
     "proto": "http",        // 'http' or 'https'
     "domain": "localhost",  // Only the domain. e.g.: 'example.com' or 'www.example.com'
     "depth": 3,             // Nesting depth to crawl
-    "login": {              // Login data
+    "login": {              // Login section
         "enabled": false,    // Do we actually need to do a login?
         "method": "post",   // 'post' or 'get'
         "action": "/login.php", // Where the post or get will be submitted to
@@ -51,6 +51,10 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
             "username": "john",
             "password": "doe"
         }
+    },
+    "store": {              // Store section
+        "enabled": false,   // save to disk?
+        "path": "./data"    // path for saving (rel or abs)
     }
 }
 ```
@@ -68,6 +72,9 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
 |action|string|`/login.php`|login page|Relative login page (from the base domain, including leading slash) where the `post` or `get` will go to.|
 |failure|string|`Password is incorrect`|login failed string|A string that is found on the login page, when the login fails.|
 |fields|key-value|`{`<br/>    `"username": "john",`<br/>    `"password": "doe"`<br>`}`|`post` or `get` params|POST or GET params required to login.<br/><br/>**Examples:** username, password, hidden-field-name|
+|store||||Store section|
+|enabled|boolean|`false`|`true` or `false`|`true`: Save webpages to disk<br/>`false`: Do not save webpages to disk.|
+|path|string|`./data`|Path|Absolute or relative path to store webpages to disk|
 
 ## TODO
 

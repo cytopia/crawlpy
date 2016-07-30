@@ -2,7 +2,9 @@
 # Custom stuff
 #
 crawlpy.config.json
+data/*
 
+!.keepme
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
