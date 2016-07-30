@@ -201,6 +201,7 @@ class CrawlpySpider(InitSpider):
             response,
             formdata=self.config['login']['fields'],
             method=self.config['login']['method'],
+            dont_filter=True,
             callback=self.post_login
         )
 
