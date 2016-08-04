@@ -25,6 +25,10 @@ pip install Scrapy
 * Variable level of crawling depth
 * Optionally save webpages to disk
 
+## Roadmap
+
+Find all planned features and their stati here: https://github.com/cytopia/crawlpy/issues/1
+
 
 ## Usage
 
