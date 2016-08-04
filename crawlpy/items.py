@@ -21,5 +21,6 @@ class CrawlpyItem(Item):
 
     url = Field()
     text = Field()
+    status = Field()
     depth = Field()
     referer = Field()

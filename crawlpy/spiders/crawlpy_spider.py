@@ -20,12 +20,9 @@ from crawlpy.items import CrawlpyItem
 
 
 __author__ = "cytopia"
-__copyright__ = "Copyright 2016"
-__credits__ = ["cytopia",]
 __license__ = "MIT"
-__maintainer__ = "cytopia"
 __email__ = "cytopia@everythingcli.org"
-__status__ = "Production"
+
 
 
 # Fix UTF-8 problems inside dict()
@@ -67,6 +64,7 @@ class CrawlpySpider(InitSpider):
         'proto': 'http',
         'domain': 'localhost',
         'depth': 3,
+        'httpstatus_list': [],
         'login': {
             'enabled': False,
             'method': 'post',
@@ -141,6 +139,7 @@ class CrawlpySpider(InitSpider):
             self.config['proto'] = str(config.get('proto', self.config_defaults['proto']))
             self.config['domain'] = str(config.get('domain', self.config_defaults['domain']))
             self.config['depth'] = int(config.get('depth', self.config_defaults['depth']))
+            self.config['httpstatus_list'] = config.get('httpstatus_list', self.config_defaults['httpstatus_list'])
             self.config['login'] = dict()
             self.config['login']['enabled'] = bool(config.get('login', dict()).get('enabled', self.config_defaults['login']['enabled']))
             self.config['login']['method'] = str(config.get('login', dict()).get('method', self.config_defaults['login']['method']))
@@ -156,6 +155,8 @@ class CrawlpySpider(InitSpider):
             logging.info('Merged configuration:')
             logging.info(self.config)
 
+
+
             # Set scrapy globals
             self.allowed_domains = [self.config['domain']]
             self.start_urls = [self.config['proto'] + '://' + self.config['domain'] + '/']
@@ -170,12 +171,14 @@ class CrawlpySpider(InitSpider):
                     follow=True
                 ),
             )
+            # Handle more status codes
+            self.handle_httpstatus_list = self.config['httpstatus_list']
 
             # Overwrite built-in crawling depth via own config file
             # Make sure to add +1 if we do a login (which counts as 1 level)
             # The variable will be handle by a custom middleware: MyDepthMiddleware
             # and parse it to the normal middleware: DepthMiddleware
-            if self.config['login']['enabled']:
+            if self.config['login']['enabled'] and self.config['depth'] != 0:
                 self.max_depth = self.config['depth'] + 1
             else:
                 self.max_depth = self.config['depth']
@@ -271,6 +274,7 @@ class CrawlpySpider(InitSpider):
         # Yield current url item
         item = CrawlpyItem()
         item['url'] = response.url
+        item['status'] = response.status
         item['depth'] = curr_depth
         item['referer'] = response.meta.get('referer', '')
         yield item
