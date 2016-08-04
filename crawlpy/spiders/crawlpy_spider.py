@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Python web spider/crawler based on scrapy with support for POST/GET login,
+variable level of recursions/depth and optionally save to disk.
 
-"""Module Doc"""
+This file provides the crawling spider class.
+"""
+
 import sys      # Encoding
 import os       # file path checks
 import logging  # logger
@@ -12,6 +17,16 @@ from scrapy.spiders             import Rule
 from scrapy.spiders.init        import InitSpider
 
 from crawlpy.items import CrawlpyItem
+
+
+__author__ = "cytopia"
+__copyright__ = "Copyright 2016"
+__credits__ = ["cytopia",]
+__license__ = "MIT"
+__maintainer__ = "cytopia"
+__email__ = "cytopia@everythingcli.org"
+__status__ = "Production"
+
 
 # Fix UTF-8 problems inside dict()
 reload(sys)
@@ -156,6 +171,16 @@ class CrawlpySpider(InitSpider):
                 ),
             )
 
+            # Overwrite built-in crawling depth via own config file
+            # Make sure to add +1 if we do a login (which counts as 1 level)
+            # The variable will be handle by a custom middleware: MyDepthMiddleware
+            # and parse it to the normal middleware: DepthMiddleware
+            if self.config['login']['enabled']:
+                self.max_depth = self.config['depth'] + 1
+            else:
+                self.max_depth = self.config['depth']
+
+
             # Set misc globals
             self.base_url = self.config['proto'] + '://' + self.config['domain']
             self.login_url = self.config['proto'] + '://' + self.config['domain'] + \
@@ -172,7 +197,7 @@ class CrawlpySpider(InitSpider):
         if self.abort:
             return
 
-        logging.info('All set, start crawling with depth: ' + str(self.config['depth']))
+        logging.info('All set, start crawling with depth: ' + str(self.max_depth))
 
         # Do a login
         if self.config['login']['enabled']:
@@ -190,7 +215,10 @@ class CrawlpySpider(InitSpider):
     def login(self, response):
         """Generate a login request."""
 
-        # Add CSRF data to login
+        # Add CSRF data to login.
+        # Note: scrapy already does this automatically, if it finds
+        # pre-filled input fields. If everything works without having
+        # to use this custom csrf feature, it could be removed in the future.
         if self.config['login']['csrf']['enabled']:
             field = self.config['login']['csrf']['field']
             csrf = response.xpath('//input[@name="' + field + '"]/@value')[0].extract()
@@ -208,9 +236,11 @@ class CrawlpySpider(InitSpider):
 
     #----------------------------------------------------------------------
     def post_login(self, response):
-        """Check the response returned by a login request to see if we are
+        """
+        Check the response returned by a login request to see if we are
         successfully logged in.
         """
+
         if self.config['login']['failure'] not in response.body:
             # Now the crawling can begin..
             logging.info('Login successful')
@@ -246,7 +276,7 @@ class CrawlpySpider(InitSpider):
         yield item
 
         # Dive deeper?
-        if curr_depth < self.config['depth'] or self.config['depth'] == 0:
-            links = LinkExtractor().extract_links(response)
-            for link in links:
-                yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})
+        # The nesting depth is now handled via a custom middle-ware (middlewares.py)
+        links = LinkExtractor().extract_links(response)
+        for link in links:
+            yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})

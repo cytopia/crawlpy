@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
-
-# Define here the models for your scraped items
-#
-# See documentation in:
-# http://doc.scrapy.org/en/latest/topics/items.html
-
 """
-Need Field and Item
+Python web spider/crawler based on scrapy with support for POST/GET login,
+variable level of recursions/depth and optionally save to disk.
+
+Defines my custom model items.
+See documentation in:
+http://doc.scrapy.org/en/latest/topics/items.html
 """
-#import scrapy
+
 from scrapy.item import Item, Field
 
-class CrawlpyItem(Item): # pylint: disable=too-many-ancestors
-    """
-    Data Model Class
-    """
-    # define the fields for your item here like:
+
+__author__ = "cytopia"
+__license__ = "MIT"
+__email__ = "cytopia@everythingcli.org"
+
+
+class CrawlpyItem(Item):
+    """Data Model Class"""
+
     url = Field()
     text = Field()
     depth = Field()
