@@ -2,6 +2,7 @@
 	"proto": "http",
 	"domain": "localhost",
 	"depth": 3,
+	"httpstatus_list": [],
 	"login": {
 		"enabled": false,
 		"method": "post",
