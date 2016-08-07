@@ -209,7 +209,7 @@ class CrawlpySpider(InitSpider):
             return Request(url=self.login_url, callback=self.login)
         else:
             # Start with pase function
-            logging.info('Not ogin required')
+            logging.info('Not login required')
             return Request(url=self.base_url, callback=self.parse)
 
 
