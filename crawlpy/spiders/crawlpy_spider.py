@@ -30,6 +30,12 @@ reload(sys)
 sys.setdefaultencoding('utf8')
 
 
+# TODO:
+# * Self-contained spider: http://snipplr.com/view/67012/selfcontained-script-to-crawl-a-site-updated-scrapy-130dev/
+# * From a script spider:  http://snipplr.com/view/67006/using-scrapy-from-a-script/
+
+
+
 ################################################################################
 # Spider Class
 ################################################################################
@@ -46,6 +52,11 @@ class CrawlpySpider(InitSpider):
     # Link extraction rules
     # To be initialized
     rules = ()
+
+    # Store all urls in order to
+    # filter duplicates
+    duplicates = []
+
 
 
     # scrapy domain/url vars
@@ -64,6 +75,7 @@ class CrawlpySpider(InitSpider):
         'proto': 'http',
         'domain': 'localhost',
         'depth': 3,
+        'ignores': [],
         'httpstatus_list': [],
         'login': {
             'enabled': False,
@@ -103,14 +115,14 @@ class CrawlpySpider(InitSpider):
     ########################################
 
     #----------------------------------------------------------------------
-    def __init__(self, *a, **kw):
+    def __init__(self, *args, **kwargs):
         """Constructor: overwrite parent __init__ function"""
 
         # Call parent init
-        super(CrawlpySpider, self).__init__(*a, **kw)
+        super(CrawlpySpider, self).__init__(*args, **kwargs)
 
         # Get command line arg provided configuration param
-        config_file = kw.get('config')
+        config_file = kwargs.get('config')
 
         # Validate configuration file parameter
         if not config_file:
@@ -139,6 +151,7 @@ class CrawlpySpider(InitSpider):
             self.config['proto'] = str(config.get('proto', self.config_defaults['proto']))
             self.config['domain'] = str(config.get('domain', self.config_defaults['domain']))
             self.config['depth'] = int(config.get('depth', self.config_defaults['depth']))
+            self.config['ignores'] = config.get('ignores', self.config_defaults['ignores'])
             self.config['httpstatus_list'] = config.get('httpstatus_list', self.config_defaults['httpstatus_list'])
             self.config['login'] = dict()
             self.config['login']['enabled'] = bool(config.get('login', dict()).get('enabled', self.config_defaults['login']['enabled']))
@@ -156,7 +169,6 @@ class CrawlpySpider(InitSpider):
             logging.info(self.config)
 
 
-
             # Set scrapy globals
             self.allowed_domains = [self.config['domain']]
             self.start_urls = [self.config['proto'] + '://' + self.config['domain'] + '/']
@@ -165,12 +177,14 @@ class CrawlpySpider(InitSpider):
                     LinkExtractor(
                         allow_domains=(self.allowed_domains),
                         unique=True,
-                        deny=('logout'),
+                        deny=tuple(self.config['ignores']),
                     ),
                     callback='parse',
                     follow=True
                 ),
             )
+
+
             # Handle more status codes
             self.handle_httpstatus_list = self.config['httpstatus_list']
 
@@ -188,6 +202,7 @@ class CrawlpySpider(InitSpider):
             self.base_url = self.config['proto'] + '://' + self.config['domain']
             self.login_url = self.config['proto'] + '://' + self.config['domain'] + \
                                   self.config['login']['action']
+
 
 
 
@@ -279,8 +294,36 @@ class CrawlpySpider(InitSpider):
         item['referer'] = response.meta.get('referer', '')
         yield item
 
-        # Dive deeper?
-        # The nesting depth is now handled via a custom middle-ware (middlewares.py)
+
+
+        # Get all links from the current page
         links = LinkExtractor().extract_links(response)
+
+        # Iterate all found links and crawl them
         for link in links:
-            yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})
+            deny = False
+
+            # Check requests to be ignored
+            for ignore in self.config['ignores']:
+                if  (ignore in link.url) or (ignore.lower() in link.url.lower()):
+                    # Ignore pattern found, stop looking into other patterns
+                    deny = True
+                    break
+
+
+            # [NO] Max depth exceeded
+            if curr_depth >= self.max_depth:
+                logging.info('[Not Crawling] Current depth (' + curr_depth + ') exceeds max depth (' + self.max_depth + ')')
+                pass
+            # [NO] Duplicate URL
+            elif link.url in self.duplicates:
+                logging.info('[Not Crawling] Url already crawled: ' + link.url)
+                pass
+            # [NO] URL denied
+            elif deny:
+                logging.info('[Not Crawling] Url denied (pattern: "' + ignore + '"): ' + link.url)
+                pass
+            # [OK] Crawl!
+            else:
+                self.duplicates.append(link.url)
+                yield Request(link.url, meta={'depth': curr_depth+1, 'referer': response.url})

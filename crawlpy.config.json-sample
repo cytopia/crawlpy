@@ -2,6 +2,11 @@
 	"proto": "http",
 	"domain": "localhost",
 	"depth": 3,
+	"ignores": [
+		"/user/logout.php",
+		"/user/delete.php?id=1",
+		"/user/disable.php?id=1",
+	],
 	"httpstatus_list": [],
 	"login": {
 		"enabled": false,

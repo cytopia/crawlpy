@@ -55,6 +55,7 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
     "proto": "http",        // 'http' or 'https'
     "domain": "localhost",  // Only the domain. e.g.: 'example.com' or 'www.example.com'
     "depth": 3,             // Nesting depth to crawl
+    "ignores": [],          // Array of substrings to deny/ignore when found in URL
 	"httpstatus_list": [],  // Array of http status codes to handle (default is 2xx)
     "login": {              // Login section
         "enabled": false,   // Do we actually need to do a login?
@@ -84,7 +85,8 @@ It must be a valid json file (without comments), otherwise `crawlpy` will throw 
 |proto|string|`http`|`http` or `https`|Is the site you want to crawl running on `http` or `https`?|
 |domain|string|`localhost`|Domain or subdomain|The domain or subdomain you want to spider. Nothing outside this domain/subdomain will be touched.|
 |depth|integer|`3`|`0`,`1`,`2`,`3`,...|`0`: Crawl indefinetely until every subpage has been reached.<br/>`1`: Only crawl links on the initial page.<br/>`2`: Crawl links on the initial page and everything found on the links of that page.<br/><br/>**Note:** when you do a login, the login page already counts as one level of depth by scrapy itself, but this is rewritten internally to subtract that depth again, so your output will not show that extra depth.|
-|httpstatus_list|array|\[ \]|\[403, 404, 500\]|By default scrapy ignores pages with status code other than 2xx, so if you know that a 403 page contains actual content with links, just add this here.<br/><br/>*Note:* There is no need to specify `200`, as scrapy crawls them by default.|
+|ignores|array|\[ \]|\['/logout.php', 'delete.php?id=1'\]|Each array string element is treated as a substring (no regex) and is checked against a FQDN. If any of the specified substrings is found in that URL, it will not be crawled.<br/><br/>**Note:** It does make sense, when you login somewhere, to ignore the logout page, as well as other pages that might delete/disable your current user, so you will not be kicked from your login session during crawl time.|
+|httpstatus_list|array|\[ \]|\[403, 404, 500\]|By default scrapy ignores pages with status code other than 2xx, so if you know that a 403 page contains actual content with links, just add this here.<br/><br/>**Note:** There is no need to specify `200`, as scrapy crawls them by default.|
 |**login**||||Login section|
 |enabled|boolean|`false`|`true` or `false`|`true`: Do a login prior crawling<br/>`false`: do not login<br/><br/>**Note:**When login is set to `false`, you do not need to fill in the rest of the variables inside the `login` section|
 |method|string|`post`|`post` or `get`|Method required to execute the login|
