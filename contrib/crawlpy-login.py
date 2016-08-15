@@ -344,7 +344,7 @@ if __name__ == "__main__":
     # check if file exists
 
     print "============================================================"
-    print " Custom Deployment"
+    print " Login Test"
     print "============================================================"
 
     # Make calls
