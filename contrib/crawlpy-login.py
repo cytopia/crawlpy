@@ -327,6 +327,7 @@ if __name__ == "__main__":
     wget_login = [
         'wget',
         '--quiet',
+        '--content-on-error',
         '--keep-session-cookies',
         '--load-cookies',
         file_cookie,
@@ -350,7 +351,7 @@ if __name__ == "__main__":
     # Make calls
     Helper().print_headline('[1] Creating initial session request')
     if Helper.run(wget_create_session) != 0:
-        print "wget session call failed"
+        print "wget session call failed" 
         sys.exit(2)
 
     Helper().print_headline('[2] Submitting POST login')
