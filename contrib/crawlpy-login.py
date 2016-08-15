@@ -354,9 +354,9 @@ if __name__ == "__main__":
         sys.exit(2)
 
     Helper().print_headline('[2] Submitting POST login')
-    if Helper().run(wget_login) != 0:
-        print "wget login call failed"
-        sys.exit(2)
+
+    # Could return > 0 if main after-login page is 404 or other than 200
+    Helper().run(wget_login)
 
     source = Helper.readFile(file_output)
 
