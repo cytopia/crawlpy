@@ -4,14 +4,14 @@
 import sys
 import getopt
 import os.path
-import pwd
-import json     # json extract
-from subprocess import Popen, PIPE, call
+import json
+import subprocess
 
 __author__ = "cytopia"
-__license__ = "MIT"
 __email__ = "cytopia@everythingcli.org"
-__version__ = '0.1'
+__license__ = "MIT"
+__version__ = '0.2'
+__date__ = '2016-08-15'
 
 
 
@@ -21,22 +21,40 @@ sys.setdefaultencoding('utf8')
 
 
 ################################################################################
-# Helper Class
+# File Class
 ################################################################################
-class MyJson(object):
+class MyFile(object):
 
     #----------------------------------------------------------------------
     @staticmethod
-    def _read(path):
+    def read(path):
         fp = open(path)
         data = fp.read()
         fp.close()
         return data
 
+
+################################################################################
+# Json Class
+################################################################################
+class MyJson(object):
+
+    #----------------------------------------------------------------------
+    @staticmethod
+    def _toAscii(input):
+        if isinstance(input, dict):
+            return {MyJson._toAscii(key): MyJson._toAscii(value) for key, value in input.iteritems()}
+        elif isinstance(input, list):
+            return [MyJson._toAscii(element) for element in input]
+        elif isinstance(input, unicode):
+            return input.encode('utf-8')
+        else:
+            return input
+
     #----------------------------------------------------------------------
     @staticmethod
     def validateFile(path):
-        json_string = MyJson._read(path)
+        json_string = MyFile.read(path)
         return MyJson.validateString(json_string)
 
     #----------------------------------------------------------------------
@@ -51,44 +69,23 @@ class MyJson(object):
     #----------------------------------------------------------------------
     @staticmethod
     def convertFile2dict(path):
-        json_string = MyJson._read(path)
+        json_string = MyFile.read(path)
         return MyJson.convertString2dict(json_string)
 
     #----------------------------------------------------------------------
     @staticmethod
     def convertString2dict(json_string):
-        # TODO:
-        #content = json.loads(str(json_string))
-        #print content
-        #for key, value in content.iteritems():
-        #    if type(value) == type(['']):
-        #        for sub_value in value:
-        #            strg = str(json.dumps(sub_value))
-        #            MyJson.convertString2dict(strg)
-        #    else:
-        #        print value
-
-        # fill in default values for missing values
-        config = json.loads(json_string)
-        jdict = dict()
-        jdict['proto'] = str(config.get('proto', 'http'))
-        jdict['domain'] = str(config.get('domain', 'localhost'))
-        jdict['login'] = dict()
-        jdict['login']['enabled'] = bool(config.get('login', dict()).get('enabled', False))
-        jdict['login']['method'] = str(config.get('login', dict()).get('method', 'post'))
-        jdict['login']['action'] = str(config.get('login', dict()).get('action', '/login.php'))
-        jdict['login']['failure'] = str(config.get('login', dict()).get('failure', 'Invalid password'))
-        jdict['login']['fields'] = config.get('login', dict()).get('fields', {'username': 'john', 'password': 'doe'})
+        # Remove unicide
+        ujdict = json.loads(json_string)
+        jdict = MyJson._toAscii(ujdict)
         return jdict
 
 
 
-
-
 ################################################################################
-# Helper Class
+# Shell Class
 ################################################################################
-class Helper(object):
+class MyShell(object):
 
     #----------------------------------------------------------------------
     @staticmethod
@@ -109,49 +106,39 @@ class Helper(object):
 
         return None
 
+    #----------------------------------------------------------------------
+    @staticmethod
+    def run(args, show_cmd=False, show_return=False, cmd_color='green'):
+
+        if show_cmd:
+            print MyShell.color(cmd_color) + '$ ' + ' '.join(args) + MyShell.color('reset')
+
+        retval = subprocess.call(args, shell=False)
+
+        if show_return:
+            print retval
+
+        return retval
+
 
     #----------------------------------------------------------------------
     @staticmethod
-    def readFile(path):
-        fp = open(path)
-        data = fp.read()
-        fp.close()
-        return data
-
-
-    #----------------------------------------------------------------------
-    @staticmethod
-    def run(args):
-
-        uid = pwd.getpwuid(os.getuid()).pw_name
-        cmd = ' '.join(args)
-
-        purple = Helper().get_color('purple')
-        green = Helper().get_color('green')
-        reset = Helper().get_color('reset')
-
-        print purple + uid + ' $ ' + green + cmd + reset
-        return call(args, shell=False)
-
-    #----------------------------------------------------------------------
-    @staticmethod
-    def get_color(color):
-
-        if color == "red":
+    def color(color):
+        if color == 'red':
             return '\033[0;31m'
-        elif color == "green":
+        elif color == 'green':
             return '\033[0;32m'
-        elif color == "blue":
+        elif color == 'brown':
+            return '\033[0;33m'
+        elif color == 'blue':
             return '\033[0;34m'
-        elif color == "purple":
+        elif color == 'magenta':
             return '\033[0;35m'
+        elif color == 'cyan':
+            return '\033[0;36m'
         else:
             return '\033[0m'
 
-    #----------------------------------------------------------------------
-    @staticmethod
-    def print_headline(text):
-        print Helper().get_color('blue') + text + Helper().get_color('reset')
 
 
 
@@ -164,9 +151,9 @@ class Helper(object):
 def usage():
     filename = os.path.basename(sys.argv[0])
 
-    print 'Usage: ' + filename + ' -C conf.json [-c cookie.txt] [-o output.html] [-y]'
+    print 'Usage: ' + filename + ' -C conf.json [-c cookie.txt] [-o output.html] [-y] [-v]'
     print '       ' + filename + ' -h'
-    print '       ' + filename + ' -v'
+    print '       ' + filename + ' -V'
     print
     print filename + ' will test whether or not the specified crawlpy config'
     print 'is valid and can successfully login.'
@@ -192,23 +179,26 @@ def usage():
     print "                         -o /path/to/login.html"
     print "                         --cookie=/path/to/login.html"
     print
+    print "  -v, --verbose      Be more verbose."
+    print
     print "  -y, --yes          Answer 'yes' to all questions."
     print
     print "System options:"
     print "  -h, --help         Show help."
-    print "  -v, --version      Show version information."
+    print "  -V, --version      Show version information."
 
 
 #----------------------------------------------------------------------
 def credits():
     filename = os.path.basename(sys.argv[0])
-    print filename + ' ' + __version__ + ' by ' + __author__ + ' <' + __email__ + '>'
+    print filename + ' v' + __version__ + ' (' + __date__ + ')'
+    print __author__ + ' <' + __email__ + '>'
 
 
 #----------------------------------------------------------------------
 def check_requirements():
 
-    if Helper().which('wget') is None:
+    if MyShell().which('wget') is None:
         print "wget is required, but not found."
         return False
 
@@ -220,7 +210,7 @@ def get_arguments(argv):
 
     # Parse command line arguments
     try:
-        opts, args = getopt.getopt(argv, 'C:c:o:yhv', ['config=', 'cookie=', 'output=', 'yes', 'help', 'version'])
+        opts, args = getopt.getopt(argv, 'C:c:o:vyhV', ['config=', 'cookie=', 'output=', 'verbose', 'yes', 'help', 'version'])
     except getopt.GetoptError:
         print "Invalid argument(s)"
         usage()
@@ -234,12 +224,14 @@ def get_arguments(argv):
             cookie = arg
         elif opt in ("-o", "--output"):
             output = arg
+        elif opt in ("-v", "--verbose"):
+            verbose = True
         elif opt in ("-y", "--yes"):
             yes = True
         elif opt in ("-h", "--help"):
             usage()
             sys.exit()
-        elif opt in ("-v", "--version"):
+        elif opt in ("-V", "--version"):
             credits()
             sys.exit()
         else:
@@ -258,11 +250,13 @@ def get_arguments(argv):
         cookie = False
     if 'output' not in locals():
         output = False
+    if 'verbose' not in locals():
+        verbose = False
     if 'yes' not in locals():
         yes = False
 
     # Return values
-    return config, cookie, output, yes
+    return config, cookie, output, verbose, yes
 
 
 
@@ -277,7 +271,7 @@ def get_arguments(argv):
 if __name__ == "__main__":
 
     # Retrieve cmd arguments
-    config, cookie, output, yes = get_arguments(sys.argv[1:])
+    config, cookie, output, verbose, yes = get_arguments(sys.argv[1:])
 
 
     # Check requirements
@@ -308,10 +302,35 @@ if __name__ == "__main__":
         post_data.append(key + '=' + val)
 
 
-
     # Cookie/Output files
     file_output = output if output else '/tmp/login.html'
     file_cookie = cookie if cookie else '/tmp/cookie.txt'
+
+
+    # Ask what to do if file exists and not '--yes' was specified
+    if os.path.isfile(file_output) and not yes:
+        answer = None
+        while answer != 'y' and answer != 'Y':
+            answer = raw_input('Output file already exists. Overwrite? [y/n]? ')
+
+            if answer == 'Y' or answer == 'y' or answer == 'Yes' or answer == 'yes':
+                break
+            elif answer == 'N' or answer == 'n':
+                print "aborting..."
+                sys.exit(0)
+
+    # Ask what to do if file exists and not '--yes' was specified
+    if os.path.isfile(file_cookie) and not yes:
+        answer = None
+        while answer != 'y' and answer != 'Y':
+            answer = raw_input('Cookie file already exists. Overwrite? [y/n]? ')
+
+            if answer == 'Y' or answer == 'y' or answer == 'Yes' or answer == 'yes':
+                break
+            elif answer == 'N' or answer == 'n':
+                print "aborting..."
+                sys.exit(0)
+
 
 
     wget_create_session = [
@@ -341,54 +360,44 @@ if __name__ == "__main__":
     ]
 
 
-    # TODO:
-    # check if file exists
 
-    print "============================================================"
-    print " Login Test"
-    print "============================================================"
+    # Initial wget
+    if verbose:
+        print MyShell().color('blue') + '[1] Creating initial session request' + MyShell().color('reset')
+    MyShell().run(wget_create_session, show_cmd=verbose, show_return=verbose)
 
-    # Make calls
-    Helper().print_headline('[1] Creating initial session request')
-    if Helper.run(wget_create_session) != 0:
-        print "wget session call failed" 
-        sys.exit(2)
+    # Login wget
+    if verbose:
+        print MyShell().color('blue') + '[2] Submitting POST login' + MyShell().color('reset')
+    MyShell().run(wget_login, show_cmd=verbose, show_return=verbose)
 
-    Helper().print_headline('[2] Submitting POST login')
-
-    # Could return > 0 if main after-login page is 404 or other than 200
-    Helper().run(wget_login)
-
-    source = Helper.readFile(file_output)
+    # Inspect source code
+    if verbose:
+        print MyShell().color('blue') + '[3] Evaluating login page source' + MyShell().color('reset')
+    source = MyFile.read(file_output)
 
 
+    retval = 0
     if jdict['login']['failure'] in source:
-        print
         print "[FAILED] Login failed"
-        os.unlink(file_output)
-        os.unlink(file_cookie)
-        sys.exit(2)
-
+        retval = 2
     elif '</html>' in source:
-        print
         print "[OK] Login successful"
-
-        if cookie:
-            print "[OK] Session cookie created: " + file_cookie
-        else:
-            os.unlink(file_cookie)
-
-        if output:
-            print "[OK] Output file saved: " + file_output
-        else:
-            os.unlink(file_output)
-
-        sys.exit()
-
+        retval = 0
     else:
-        print
         print "[FAILED] Unable to check for successful or failed login"
-        os.unlink(file_output)
+        retval = 2
+
+
+    if cookie:
+        print "[OK] Session cookie created: " + file_cookie
+    else:
         os.unlink(file_cookie)
-        sys.exit(2)
+
+    if output:
+        print "[OK] Output file saved: " + file_output
+    else:
+        os.unlink(file_output)
+
+    sys.exit(retval)
 
