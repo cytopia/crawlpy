@@ -381,11 +381,11 @@ if __name__ == "__main__":
     if jdict['login']['failure'] in source:
         print "[FAILED] Login failed"
         retval = 2
-    elif '</html>' in source:
+    elif os.path.getsize(file_output) > 0:
         print "[OK] Login successful"
         retval = 0
     else:
-        print "[FAILED] Unable to check for successful or failed login"
+        print "[FAILED] Result page has 0 Bytes"
         retval = 2
 
 
