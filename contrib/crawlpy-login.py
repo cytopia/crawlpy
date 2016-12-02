@@ -6,6 +6,7 @@ import getopt
 import os.path
 import json
 import subprocess
+import re
 
 __author__ = "cytopia"
 __email__ = "cytopia@everythingcli.org"
@@ -108,12 +109,19 @@ class MyShell(object):
 
     #----------------------------------------------------------------------
     @staticmethod
-    def run(args, show_cmd=False, show_return=False, cmd_color='green'):
+    def run(args, output, show_cmd=False, show_return=False, cmd_color='green'):
 
         if show_cmd:
             print MyShell.color(cmd_color) + '$ ' + ' '.join(args) + MyShell.color('reset')
 
-        retval = subprocess.call(args, shell=False)
+        #retval = subprocess.call(args, shell=False, stdout=stdout)
+        try:
+            retval = 0
+            output[0] = subprocess.check_output(args, shell=False)
+        except subprocess.CalledProcessError as err:
+            retval = err.returncode
+            output[0] = err.output
+
 
         if show_return:
             print retval
@@ -336,12 +344,51 @@ if __name__ == "__main__":
     wget_create_session = [
         'wget',
         '--quiet',
-        '--delete-after',
         '--keep-session-cookies',
         '--save-cookies',
         file_cookie,
+        '-O',
+        '-',
         login_url
     ]
+
+
+
+    # Initial wget
+    if verbose:
+        print MyShell().color('blue') + '[1] Creating initial session request' + MyShell().color('reset')
+
+    output = ['']
+    MyShell().run(wget_create_session, output, show_cmd=verbose, show_return=True)
+
+    if jdict['login']['csrf']['enabled']:
+        if verbose:
+           print MyShell().color('blue') + '[2] Extracting CSRF key' + MyShell().color('reset')
+
+        csrf_key = jdict['login']['csrf']['field']
+        # Prepare regex
+        re1 = "name=(\"|')%s(\"|').*value=(\"|')(.*)(\"|')" % (csrf_key)
+        re2 = "value=(\"|')(.*)(\"|').*name=(\"|')%s(\"|')" % (csrf_key)
+        # Search
+        r1 = re.search(re1, output[0])
+        r2 = re.search(re2, output[0])
+
+        if r1:
+            csrf_val = r1.group(4)
+        elif r2:
+            csrf_val = r2.group(2)
+        else:
+            print "Error, no such html attribute found"
+            csrf_val = ''
+
+        # Show extracted key
+        if verbose:
+            print "key: %s | val: %s" % (csrf_key, csrf_val)
+
+        post_data.append(csrf_key + '=' + csrf_val)
+    else:
+        print MyShell().color('blue') + '[2] No CSRF key extraction' + MyShell().color('reset')
+
 
     wget_login = [
         'wget',
@@ -359,21 +406,14 @@ if __name__ == "__main__":
         login_url
     ]
 
-
-
-    # Initial wget
-    if verbose:
-        print MyShell().color('blue') + '[1] Creating initial session request' + MyShell().color('reset')
-    MyShell().run(wget_create_session, show_cmd=verbose, show_return=verbose)
-
     # Login wget
     if verbose:
-        print MyShell().color('blue') + '[2] Submitting POST login' + MyShell().color('reset')
-    MyShell().run(wget_login, show_cmd=verbose, show_return=verbose)
+        print MyShell().color('blue') + '[3] Submitting POST login' + MyShell().color('reset')
+    MyShell().run(wget_login, output, show_cmd=verbose, show_return=True)
 
     # Inspect source code
     if verbose:
-        print MyShell().color('blue') + '[3] Evaluating login page source' + MyShell().color('reset')
+        print MyShell().color('blue') + '[4] Evaluating login page source' + MyShell().color('reset')
     source = MyFile.read(file_output)
 
 
