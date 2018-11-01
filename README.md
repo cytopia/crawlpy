@@ -1,10 +1,9 @@
 # Crawlpy
 
----
+[![Tag](https://img.shields.io/github/tag/cytopia/crawlpy.svg)](https://github.com/cytopia/crawlpy/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 Python web spider/crawler based on [scrapy](http://scrapy.org/) with support for POST/GET login, variable level of recursions/depth and optionally save to disk.
-
----
 
 
 ## Requirements
@@ -111,3 +110,10 @@ Scrapy will most likely handle this automatically, so its best to turn off custo
 * https://stackoverflow.com/questions/5851213/crawling-with-an-authenticated-session-in-scrapy
 * https://stackoverflow.com/questions/38619807/scrapy-recursive-link-crawler-with-login-help-me-improve/
 * http://thuongnh.com/building-a-web-crawler-with-scrapy/
+
+
+## License
+
+[MIT License](LICENSE.md)
+
+Copyright (c) 2016 [cytopia](https://github.com/cytopia)
