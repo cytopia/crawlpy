@@ -50,7 +50,7 @@ Make a copy of [crawlpy.config.json-sample](crawlpy.config.json-sample) (e.g.: `
 **Note:**
 It must be a valid json file (without comments), otherwise `crawlpy` will throw errors parsing json. (Use http://jsonlint.com/ to validate your config file.)
 
-```json
+```javascript
 {
     "proto": "http",        // 'http' or 'https'
     "domain": "localhost",  // Only the domain. e.g.: 'example.com' or 'www.example.com'
